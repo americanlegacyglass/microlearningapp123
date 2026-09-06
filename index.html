@@ -389,7 +389,7 @@
   <div id="toastContainer"></div>
 
   <div class="dashboard" id="dashboardView" style="display:none;">
-    <div class="dashboard-intro">Six subjects, one ledger. Pick where you're picking up.</div>
+    <div class="dashboard-intro">Eight subjects, one ledger. Pick where you're picking up.</div>
     <div class="dashboard-grid" id="dashboardGrid"></div>
   </div>
 
@@ -523,7 +523,9 @@ const TRACKS = [
   { id: 'negotiation', label: 'Negotiation · Communication · Persuasion' },
   { id: 'cfa', label: 'CFA · Investing · Macro' },
   { id: 'tax', label: 'Small Business Tax' },
-  { id: 'behecon', label: 'Behavioral Economics & Decisions' }
+  { id: 'behecon', label: 'Behavioral Economics & Decisions' },
+  { id: 'logic', label: 'Logic & Critical Thinking' },
+  { id: 'bizlaw', label: 'Business Law & Contracts' }
 ];
 let ALL_LESSONS = []; // every lesson fetched, unfiltered
 let currentTrack = 'cma';
@@ -619,7 +621,9 @@ const TRACK_STYLE = {
   negotiation: { accent: '#c67a4e', icon: '◈' },
   cfa: { accent: '#5f9a72', icon: '△' },
   tax: { accent: '#6f9bc4', icon: '▤' },
-  behecon: { accent: '#d97a94', icon: '◇' }
+  behecon: { accent: '#d97a94', icon: '◇' },
+  logic: { accent: '#7fb0a3', icon: '⊢' },
+  bizlaw: { accent: '#b09550', icon: '⚖' }
 };
 
 function renderDashboardGrid(){
@@ -824,7 +828,9 @@ let cycles = {
   negotiation: { subjectTurn: 0, pointers: {} },
   cfa: { subjectTurn: 0, pointers: {} },
   tax: { subjectTurn: 0, pointers: {} },
-  behecon: { subjectTurn: 0, pointers: {} }
+  behecon: { subjectTurn: 0, pointers: {} },
+  logic: { subjectTurn: 0, pointers: {} },
+  bizlaw: { subjectTurn: 0, pointers: {} }
 };
 let cycle = cycles.cma; // alias to the active track's cycle object
 let currentLessonId = null;
