@@ -354,6 +354,41 @@
   }
   .badge-title{font-family:'Fraunces',serif; font-size:15.5px; font-weight:600; color:var(--white); margin-bottom:4px;}
   .badge-desc{font-size:12.5px; color:var(--muted); line-height:1.4;}
+
+  .cal-wrap{max-width:460px; margin:0 auto;}
+  .cal-nav{display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;}
+  .cal-nav-btn{
+    background:transparent; border:1px solid var(--line); color:var(--white); border-radius:6px;
+    padding:8px 14px; cursor:pointer; font-family:'IBM Plex Mono',monospace; font-size:13px;
+    transition:border-color 0.15s ease, color 0.15s ease;
+  }
+  .cal-nav-btn:hover{border-color:var(--gold); color:var(--gold);}
+  .cal-nav-btn:disabled{opacity:0.3; cursor:not-allowed;}
+  .cal-month-label{font-family:'Fraunces',serif; font-size:19px; font-weight:600; color:var(--white);}
+  .cal-grid{display:grid; grid-template-columns:repeat(7, 1fr); gap:6px;}
+  .cal-dow{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted); text-align:center;
+    text-transform:uppercase; padding-bottom:6px; letter-spacing:0.04em;
+  }
+  .cal-day{
+    aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:8px;
+    font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--muted);
+    background:var(--panel-2); border:1px solid var(--line-soft);
+  }
+  .cal-day.empty{background:transparent; border:none;}
+  .cal-day.active{
+    background:linear-gradient(150deg, #6fae83, var(--green)); border-color:var(--green); color:var(--ink); font-weight:700;
+  }
+  .cal-day.missed{background:var(--ink-2); border-color:var(--line-soft); color:var(--muted);}
+  .cal-day.future{background:transparent; border:1px dashed var(--line-soft); color:var(--line);}
+  .cal-day.today{box-shadow:0 0 0 2px var(--gold);}
+  .cal-legend{display:flex; gap:18px; justify-content:center; margin-top:22px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted);}
+  .cal-legend-item{display:flex; align-items:center; gap:6px;}
+  .cal-legend-dot{width:10px; height:10px; border-radius:3px; flex-shrink:0;}
+  .cal-summary{
+    text-align:center; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--gold);
+    margin-top:20px; padding:12px; border:1px solid var(--gold-dim); border-radius:8px; background:rgba(201,162,75,0.05);
+  }
   .toast.achievement{
     background:linear-gradient(135deg, #b48ee0, #8a6fc4); color:#fff;
     animation:toastIn 0.4s ease, toastPop 0.5s ease 0.1s, toastOut 0.4s ease 3.0s forwards;
@@ -368,6 +403,7 @@
       <div class="tagline" id="tagline">Micro-lessons</div>
     </div>
     <div class="stats">
+      <button class="home-btn" id="calendarBtn" style="display:none;">📅 Calendar</button>
       <button class="home-btn" id="achievementsBtn" style="display:none;">🏆 Badges</button>
       <button class="home-btn" id="historyBtn" style="display:none;">📜 Completed</button>
       <button class="home-btn" id="homeBtn" style="display:none;">⌂ Home</button>
@@ -444,6 +480,7 @@ function showLogin(){
   document.getElementById('homeBtn').style.display = 'none';
   document.getElementById('historyBtn').style.display = 'none';
   document.getElementById('achievementsBtn').style.display = 'none';
+  document.getElementById('calendarBtn').style.display = 'none';
   document.getElementById('xpHud').style.display = 'none';
 }
 function showApp(){
@@ -451,6 +488,7 @@ function showApp(){
   document.getElementById('homeBtn').style.display = 'inline-block';
   document.getElementById('historyBtn').style.display = 'inline-block';
   document.getElementById('achievementsBtn').style.display = 'inline-block';
+  document.getElementById('calendarBtn').style.display = 'inline-block';
   document.getElementById('xpHud').style.display = 'flex';
 }
 function showDashboard(){
@@ -469,6 +507,7 @@ function showBoard(){
 document.getElementById('homeBtn').addEventListener('click', showDashboard);
 document.getElementById('historyBtn').addEventListener('click', showHistoryView);
 document.getElementById('achievementsBtn').addEventListener('click', renderAchievementsView);
+document.getElementById('calendarBtn').addEventListener('click', showCalendarView);
 
 try {
   const app = initializeApp(firebaseConfig);
@@ -1072,6 +1111,98 @@ function renderAchievementsView(){
   html += `</div></div>`;
   panel.innerHTML = html;
   document.getElementById('backToDashboardBtn3').addEventListener('click', showDashboard);
+}
+
+// ---------------- ACTIVITY CALENDAR ----------------
+let calendarYear = new Date().getFullYear();
+let calendarMonth = new Date().getMonth(); // 0-indexed
+
+function getActiveDatesSet(){
+  const dates = new Set();
+  Object.values(progress).forEach(p => {
+    if (p.completed && p.lastDate) dates.add(p.lastDate);
+  });
+  return dates;
+}
+
+function showCalendarView(){
+  showBoard();
+  calendarYear = new Date().getFullYear();
+  calendarMonth = new Date().getMonth();
+  renderCalendarView();
+}
+
+function renderCalendarView(){
+  const panel = document.getElementById('mainPanel');
+  const activeDates = getActiveDatesSet();
+  const today = new Date();
+  const todayKey = todayStr();
+
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const firstOfMonth = new Date(calendarYear, calendarMonth, 1);
+  const startDow = firstOfMonth.getDay(); // 0 = Sunday
+  const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+
+  const isCurrentMonth = calendarYear === today.getFullYear() && calendarMonth === today.getMonth();
+  const isFutureMonth = calendarYear > today.getFullYear() || (calendarYear === today.getFullYear() && calendarMonth > today.getMonth());
+
+  let cellsHtml = '';
+  ['S','M','T','W','T','F','S'].forEach(d => { cellsHtml += `<div class="cal-dow">${d}</div>`; });
+  for (let i = 0; i < startDow; i++){
+    cellsHtml += `<div class="cal-day empty"></div>`;
+  }
+  let activeCountThisMonth = 0;
+  for (let day = 1; day <= daysInMonth; day++){
+    const dateObj = new Date(calendarYear, calendarMonth, day);
+    const key = dateObj.toISOString().slice(0,10);
+    const isFuture = key > todayKey;
+    const isToday = key === todayKey;
+    const isActive = activeDates.has(key);
+    if (isActive) activeCountThisMonth++;
+    let cls = 'cal-day';
+    if (isFuture) cls += ' future';
+    else if (isActive) cls += ' active';
+    else cls += ' missed';
+    if (isToday) cls += ' today';
+    cellsHtml += `<div class="${cls}">${day}</div>`;
+  }
+
+  const totalActiveOverall = activeDates.size;
+
+  const panelHtml = `
+    <a class="back-link" id="backToDashboardBtn4">← All subjects</a>
+    <div class="cal-wrap fade-in">
+      <div class="path-title" style="margin-bottom:20px;">Activity Calendar</div>
+      <div class="cal-nav">
+        <button class="cal-nav-btn" id="calPrevBtn">← Prev</button>
+        <div class="cal-month-label">${monthNames[calendarMonth]} ${calendarYear}</div>
+        <button class="cal-nav-btn" id="calNextBtn" ${isFutureMonth || isCurrentMonth ? 'disabled' : ''}>Next →</button>
+      </div>
+      <div class="cal-grid">${cellsHtml}</div>
+      <div class="cal-legend">
+        <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--green);"></span>Studied</div>
+        <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--ink-2); border:1px solid var(--line-soft);"></span>Missed</div>
+        <div class="cal-legend-item"><span class="cal-legend-dot" style="border:1px dashed var(--line-soft);"></span>Upcoming</div>
+      </div>
+      <div class="cal-summary">${activeCountThisMonth} active day${activeCountThisMonth === 1 ? '' : 's'} this month · ${totalActiveOverall} total since you started</div>
+    </div>
+  `;
+  panel.innerHTML = panelHtml;
+
+  document.getElementById('backToDashboardBtn4').addEventListener('click', showDashboard);
+  document.getElementById('calPrevBtn').addEventListener('click', () => {
+    calendarMonth--;
+    if (calendarMonth < 0){ calendarMonth = 11; calendarYear--; }
+    renderCalendarView();
+  });
+  const nextBtn = document.getElementById('calNextBtn');
+  if (!nextBtn.disabled){
+    nextBtn.addEventListener('click', () => {
+      calendarMonth++;
+      if (calendarMonth > 11){ calendarMonth = 0; calendarYear++; }
+      renderCalendarView();
+    });
+  }
 }
 
 async function saveCycle(){
