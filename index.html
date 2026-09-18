@@ -938,6 +938,31 @@ async function loadProgressAndRender(){
     } catch(e){ /* defaults stand */ }
   }
 
+  // One-time repair: an older bug could duplicate entries in completedOrder (from
+  // redoing a lesson after a dropped save), which threw off checkpoint timing.
+  // De-duplicate and resync checkpointsSeen to the corrected count, once, silently.
+  let repairedAnyTrack = false;
+  for (const track of TRACKS){
+    const c = cycles[track.id];
+    if (c && Array.isArray(c.completedOrder)){
+      const deduped = Array.from(new Set(c.completedOrder));
+      if (deduped.length !== c.completedOrder.length){
+        c.completedOrder = deduped;
+        c.checkpointsSeen = Math.floor(deduped.length / 5);
+        repairedAnyTrack = true;
+      }
+    }
+  }
+  if (repairedAnyTrack){
+    const savedCurrentTrack = currentTrack;
+    for (const track of TRACKS){
+      currentTrack = track.id;
+      cycle = cycles[track.id];
+      await saveCycle();
+    }
+    currentTrack = savedCurrentTrack;
+  }
+
   cycle = cycles[currentTrack];
   rebuildTrackData(currentTrack);
   renderStats();
@@ -1394,18 +1419,23 @@ async function submitQuiz(id){
   await saveProgress(id, { completed: score/total >= 0.7, score, total, lastDate: today });
 
   if (!loggedThisVisit){
+    loggedThisVisit = true; // still guards against double-submitting within the same visit
+
     if (!cycle.completedOrder) cycle.completedOrder = [];
-    cycle.completedOrder.push(id);
-    await saveCycle();
-    loggedThisVisit = true;
+    const alreadyCounted = cycle.completedOrder.includes(id);
 
-    // Schedule the first spaced-repetition review for tomorrow
-    reviewSchedule[id] = { interval: REVIEW_INTERVALS[0], dueDate: addDays(new Date(), REVIEW_INTERVALS[0]), reps: 0 };
-    await saveReviewSchedule();
+    if (!alreadyCounted){
+      cycle.completedOrder.push(id);
+      await saveCycle();
 
-    await awardXP(XP_LESSON, lesson.title);
-    if (score === total){
-      await awardXP(XP_PERFECT_BONUS, 'perfect score');
+      // Schedule the first spaced-repetition review for tomorrow
+      reviewSchedule[id] = { interval: REVIEW_INTERVALS[0], dueDate: addDays(new Date(), REVIEW_INTERVALS[0]), reps: 0 };
+      await saveReviewSchedule();
+
+      await awardXP(XP_LESSON, lesson.title);
+      if (score === total){
+        await awardXP(XP_PERFECT_BONUS, 'perfect score');
+      }
     }
   }
 
