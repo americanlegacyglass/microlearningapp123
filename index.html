@@ -1179,7 +1179,7 @@ function renderCalendarView(){
   let activeCountThisMonth = 0;
   for (let day = 1; day <= daysInMonth; day++){
     const dateObj = new Date(calendarYear, calendarMonth, day);
-    const key = dateObj.toISOString().slice(0,10);
+    const key = localDateStr(dateObj);
     const isFuture = key > todayKey;
     const isToday = key === todayKey;
     const isActive = activeDates.has(key);
@@ -1260,7 +1260,7 @@ function getStreak(){
   let streak = 0;
   let d = new Date();
   while (true){
-    const key = d.toISOString().slice(0,10);
+    const key = localDateStr(d);
     if (dates.has(key)){ streak++; d.setDate(d.getDate()-1); }
     else break;
   }
@@ -1415,7 +1415,7 @@ async function submitQuiz(id){
   quizState.submitted = true;
   const score = quizState.answers.filter((a, i) => a === lesson.quiz[i].correct).length;
   const total = lesson.quiz.length;
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayStr();
   await saveProgress(id, { completed: score/total >= 0.7, score, total, lastDate: today });
 
   if (!loggedThisVisit){
@@ -1451,14 +1451,23 @@ function checkpointDue(){
   return Math.floor(count / 5) > seen;
 }
 
+// Local-time date string (YYYY-MM-DD), not UTC — toISOString() would shift the
+// date forward for anyone west of UTC once evening hits (e.g. Arizona after ~5pm).
+function localDateStr(date){
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function addDays(date, days){
   const d = new Date(date);
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0,10);
+  return localDateStr(d);
 }
 
 function todayStr(){
-  return new Date().toISOString().slice(0,10);
+  return localDateStr(new Date());
 }
 
 function getDueReviewId(){
